@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="A simple two-player Tic-Tac-Toe game built with vanilla HTML, CSS, and JavaScript.">
+<meta name="theme-color" content="#223228">
+<title>Tic-Tac-Toe</title>
+<style>
+  /* ================================================================
+     DESIGN TOKENS
+     Theme: a wood-framed chalkboard. Board = dark chalkboard green,
+     frame = warm wood brown, marks/lines = chalk colors.
+     ================================================================ */
+  :root {
+    --wall: #26221e;
+    --wall-light: #34302a;
+    --frame: #7a5a3f;
+    --frame-dark: #4e3826;
+    --board-bg: #223228;
+    --board-bg-soft: #2b3d31;
+    --chalk: #f2f0e8;
+    --chalk-dim: #a8b3a6;
+    --chalk-x: #ef9a8d;
+    --chalk-o: #8fc4dd;
+    --chalk-win: #f4ce6b;
+    --font-display: "Chalkboard SE", "Comic Sans MS", "Segoe Print", cursive;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* ================================================================
+     BASE / LAYOUT — the "wall" the chalkboard hangs on
+     ================================================================ */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    font-family: var(--font-body);
+    background: radial-gradient(circle at 50% 20%, var(--wall-light), var(--wall));
+    color: var(--chalk);
+  }
+
+  .app {
+    width: 100%;
+    max-width: 400px;
+    background: var(--board-bg);
+    border: 12px solid var(--frame);
+    border-radius: 8px;
+    padding: 26px;
+    box-shadow:
+      inset 0 0 30px rgba(0, 0, 0, 0.35),
+      0 20px 50px rgba(0, 0, 0, 0.5);
+  }
+
+  /* ================================================================
+     HEADER + INFO TOGGLE
+     ================================================================ */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .app-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    margin: 0;
+    text-shadow: 0 0 6px rgba(242, 240, 232, 0.25);
+  }
+
+  .icon-btn {
+    background: transparent;
+    border: 2px solid var(--chalk-dim);
+    color: var(--chalk-dim);
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .icon-btn:hover {
+    color: var(--chalk);
+    border-color: var(--chalk);
+  }
+
+  /* ================================================================
+     INFO / ABOUT PANEL — hidden until the Info button is clicked
+     ================================================================ */
+  .info-panel {
+    display: none;
+    background: var(--board-bg-soft);
+    border: 1px solid rgba(242, 240, 232, 0.12);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: 0.86rem;
+    color: var(--chalk-dim);
+    line-height: 1.5;
+  }
+
+  .info-panel.open {
+    display: block;
+    animation: fadeIn 0.18s ease;
+  }
+
+  .info-panel h2 {
+    margin: 0 0 6px;
+    font-size: 1rem;
+    color: var(--chalk);
+  }
+
+  .info-panel h3 {
+    margin: 10px 0 4px;
+    font-size: 0.9rem;
+    color: var(--chalk);
+  }
+
+  .info-panel ul {
+    margin: 0;
+    padding-left: 18px;
+  }
+
+  .info-panel li { margin-bottom: 4px; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ================================================================
+     STATUS TEXT
+     ================================================================ */
+  .status {
+    text-align: center;
+    font-size: 1.02rem;
+    font-weight: 600;
+    min-height: 1.4em;
+    margin: 6px 0 16px;
+  }
+
+  /* ================================================================
+     BOARD + CELLS
+     Cells have no boxes of their own — instead each cell draws a
+     chalk line on its right/bottom edge, and the outer edges skip
+     their line. That reproduces the classic hand-drawn "#" grid
+     instead of a generic boxed button grid.
+     ================================================================ */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cell {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 9vw, 2.6rem);
+    font-weight: 700;
+    background: transparent;
+    border: none;
+    border-right: 3px solid var(--chalk);
+    border-bottom: 3px solid var(--chalk);
+    color: var(--chalk);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .cell:nth-child(3n) { border-right: none; }   /* rightmost column: no outer line */
+  .cell:nth-child(n+7) { border-bottom: none; } /* bottom row: no outer line */
+
+  .cell:hover:not(:disabled) {
+    background: rgba(242, 240, 232, 0.06);
+  }
+
+  .cell:disabled {
+    cursor: default;
+    opacity: 1; /* stop the browser from graying out filled cells */
+  }
+
+  .cell.mark-x { color: var(--chalk-x); }
+  .cell.mark-o { color: var(--chalk-o); }
+
+  .cell.mark-x,
+  .cell.mark-o {
+    animation: markIn 0.2s ease;
+  }
+
+  .cell.win {
+    background: rgba(244, 206, 107, 0.18);
+  }
+
+  @keyframes markIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  /* ================================================================
+     BUTTONS
+     ================================================================ */
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    font-family: var(--font-body);
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.1s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .btn:hover { transform: translateY(-1px); }
+
+  .btn-primary {
+    background: var(--chalk-win);
+    color: var(--board-bg);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--chalk-dim);
+    color: var(--chalk-dim);
+  }
+
+  .btn-ghost:hover {
+    color: var(--chalk);
+    border-color: var(--chalk);
+  }
+
+  /* ================================================================
+     SCOREBOARD
+     ================================================================ */
+  .scoreboard {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(242, 240, 232, 0.15);
+  }
+
+  .score-item {
+    flex: 1;
+    text-align: center;
+  }
+
+  .score-label {
+    display: block;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--chalk-dim);
+    margin-bottom: 4px;
+  }
+
+  .score-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  #scoreX { color: var(--chalk-x); }
+  #scoreO { color: var(--chalk-o); }
+
+  /* ================================================================
+     FOOTER
+     ================================================================ */
+  .app-footer {
+    text-align: center;
+    margin-top: 18px;
+  }
+
+  .app-footer p {
+    font-size: 0.7rem;
+    color: var(--chalk-dim);
+    margin: 0;
+  }
+
+  /* ================================================================
+     ACCESSIBILITY: visible focus + respect reduced motion
+     ================================================================ */
+  .cell:focus-visible,
+  .btn:focus-visible,
+  .icon-btn:focus-visible {
+    outline: 3px solid var(--chalk-win);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <header class="app-header">
+      <h1>Tic-Tac-Toe</h1>
+      <button id="infoToggle" type="button" class="icon-btn" aria-expanded="false" aria-controls="infoPanel">ℹ️ Info</button>
+    </header>
+
+    <!-- INFO / ABOUT PANEL — hidden by default, shown by clicking the Info button -->
+    <section id="infoPanel" class="info-panel">
+      <h2>About this app</h2>
+      <p>Tic-Tac-Toe is a classic two-player strategy game played on a 3&times;3 grid. Take turns placing your mark and try to line up three in a row before your opponent does.</p>
+      <h3>How to play</h3>
+      <ul>
+        <li>Player X always goes first, then players alternate turns.</li>
+        <li>Click any empty square to place your mark there.</li>
+        <li>Get 3 marks in a row — horizontally, vertically, or diagonally — to win.</li>
+        <li>If all 9 squares fill up with no winner, the game is a draw.</li>
+        <li><strong>New Game</strong> clears the board and keeps the score.</li>
+        <li><strong>Reset Scores</strong> sets the scoreboard back to zero.</li>
+      </ul>
+    </section>
+
+    <p id="status" class="status" aria-live="polite">Player X's turn</p>
+
+    <!-- GAME BOARD — 9 buttons, indexed 0-8, left-to-right then top-to-bottom -->
+    <div id="board" class="board">
+      <button class="cell" type="button" data-index="0" aria-label="Row 1, column 1"></button>
+      <button class="cell" type="button" data-index="1" aria-label="Row 1, column 2"></button>
+      <button class="cell" type="button" data-index="2" aria-label="Row 1, column 3"></button>
+      <button class="cell" type="button" data-index="3" aria-label="Row 2, column 1"></button>
+      <button class="cell" type="button" data-index="4" aria-label="Row 2, column 2"></button>
+      <button class="cell" type="button" data-index="5" aria-label="Row 2, column 3"></button>
+      <button class="cell" type="button" data-index="6" aria-label="Row 3, column 1"></button>
+      <button class="cell" type="button" data-index="7" aria-label="Row 3, column 2"></button>
+      <button class="cell" type="button" data-index="8" aria-label="Row 3, column 3"></button>
+    </div>
+
+    <div class="controls">
+      <button id="newGameBtn" type="button" class="btn btn-primary">New Game</button>
+      <button id="resetScoresBtn" type="button" class="btn btn-ghost">Reset Scores</button>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score-item">
+        <span class="score-label">X Wins</span>
+        <span id="scoreX" class="score-value">0</span>
+      </div>
+      <div class="score-item">
+        <span class="score-label">O Wins</span>
+        <span id="scoreO" class="score-value">0</span>
+      </div>
+      <div class="score-item">
+        <span class="score-label">Draws</span>
+        <span id="scoreDraws" class="score-value">0</span>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <p>Built with plain HTML, CSS &amp; JavaScript — no frameworks.</p>
+    </footer>
+
+  </div>
+
+  <script>
+    /*
+      Script structure:
+      1. DOM references
+      2. Game state
+      3. Core game logic (checkWinner, handleBoardClick, newGame, etc.)
+      4. Event listeners
+    */
+
+    // ---------- 1. DOM references ----------
+    const boardEl       = document.getElementById('board');
+    const cells          = Array.from(document.querySelectorAll('.cell'));
+    const statusEl       = document.getElementById('status');
+    const newGameBtn     = document.getElementById('newGameBtn');
+    const resetScoresBtn = document.getElementById('resetScoresBtn');
+    const infoToggle     = document.getElementById('infoToggle');
+    const infoPanel      = document.getElementById('infoPanel');
+    const scoreXEl       = document.getElementById('scoreX');
+    const scoreOEl       = document.getElementById('scoreO');
+    const scoreDrawsEl   = document.getElementById('scoreDraws');
+
+    // ---------- 2. Game state ----------
+    let boardState    = Array(9).fill(null); // 'X' | 'O' | null for each of the 9 cells
+    let currentPlayer = 'X';
+    let gameActive    = true;
+    const scores      = { X: 0, O: 0, draws: 0 };
+
+    // Every possible way to win: 3 rows, 3 columns, 2 diagonals
+    const WIN_COMBOS = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+      [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+      [0, 4, 8], [2, 4, 6]             // diagonals
+    ];
+
+    // ---------- 3. Core game logic ----------
+
+    // Returns the winning combo (array of 3 indexes) if there is one, else null
+    function checkWinner() {
+      for (const combo of WIN_COMBOS) {
+        const [a, b, c] = combo;
+        if (boardState[a] && boardState[a] === boardState[b] && boardState[a] === boardState[c]) {
+          return combo;
+        }
+      }
+      return null;
+    }
+
+    function isBoardFull() {
+      return boardState.every(function (cell) { return cell !== null; });
+    }
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function updateScoreboard() {
+      scoreXEl.textContent = scores.X;
+      scoreOEl.textContent = scores.O;
+      scoreDrawsEl.textContent = scores.draws;
+    }
+
+    function handleBoardClick(event) {
+      const cell = event.target.closest('.cell');
+      if (!cell || !gameActive) return;
+
+      const index = Number(cell.dataset.index);
+      if (boardState[index] !== null) return; // cell already taken
+
+      // Place the current player's mark
+      boardState[index] = currentPlayer;
+      cell.textContent = currentPlayer;
+      cell.classList.add(currentPlayer === 'X' ? 'mark-x' : 'mark-o');
+      cell.disabled = true;
+
+      const winningCombo = checkWinner();
+
+      if (winningCombo) {
+        gameActive = false;
+        winningCombo.forEach(function (i) { cells[i].classList.add('win'); });
+        cells.forEach(function (c) { c.disabled = true; }); // lock the board once someone wins
+        scores[currentPlayer] += 1;
+        updateScoreboard();
+        setStatus('Player ' + currentPlayer + ' wins! 🎉');
+        return;
+      }
+
+      if (isBoardFull()) {
+        gameActive = false;
+        scores.draws += 1;
+        updateScoreboard();
+        setStatus("It's a draw!");
+        return;
+      }
+
+      // No winner yet — pass the turn to the other player
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      setStatus('Player ' + currentPlayer + "'s turn");
+    }
+
+    function newGame() {
+      boardState = Array(9).fill(null);
+      currentPlayer = 'X';
+      gameActive = true;
+
+      cells.forEach(function (cell) {
+        cell.textContent = '';
+        cell.disabled = false;
+        cell.classList.remove('mark-x', 'mark-o', 'win');
+      });
+
+      setStatus("Player X's turn");
+    }
+
+    function resetScores() {
+      scores.X = 0;
+      scores.O = 0;
+      scores.draws = 0;
+      updateScoreboard();
+    }
+
+    function toggleInfoPanel() {
+      const isOpen = infoPanel.classList.toggle('open');
+      infoToggle.setAttribute('aria-expanded', String(isOpen));
+      infoToggle.textContent = isOpen ? '✕ Close' : 'ℹ️ Info';
+    }
+
+    // ---------- 4. Event listeners ----------
+    boardEl.addEventListener('click', handleBoardClick);
+    newGameBtn.addEventListener('click', newGame);
+    resetScoresBtn.addEventListener('click', resetScores);
+    infoToggle.addEventListener('click', toggleInfoPanel);
+  </script>
+</body>
+</html>
